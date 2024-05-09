@@ -14,6 +14,9 @@ win_height = 660
 p_size = 75
 enemies = []
 bullets = []
+last_enemy_x = 1135
+first_enemy_x = 0
+lf_speed = 1
 
 window = pygame.display.set_mode((win_width, win_height))
 pygame.display.set_caption("Space Invaders")
@@ -64,9 +67,9 @@ class Player(Settings):
     def move(self):
         self.draw_hp()
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT] and self.rect.x>0:
+        if keys[pygame.K_LEFT] and self.rect.x>3*p_size:
             self.rect.x -= self.speed
-        if keys[pygame.K_RIGHT] and self.rect.x<win_width-self.rect.width:
+        if keys[pygame.K_RIGHT] and self.rect.x<win_width-3*p_size:
             self.rect.x += self.speed 
 
     def bulletshoot(self):
@@ -74,6 +77,7 @@ class Player(Settings):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_UP] and shoot:
             shoot = False
+            shootsound.play()
             bullets.append(Bullet("bullet.png", self.rect.centerx-20, self.rect.centery//1.25, 50, 100, 20))
             
 class Enemy(Player):
@@ -82,8 +86,8 @@ class Enemy(Player):
         self.hp = hp
         
     def move(self):
-        global player, enemies, finish, game
-        self.rect.x += self.speed
+        global player, enemies, finish, game, last_enemy_x, first_enemy_x
+        self.rect.x += self.speed  
         if self.rect.colliderect(player.rect) and self in enemies:
             damagesound.play()
             enemies.remove(self)
@@ -95,7 +99,7 @@ class Enemy(Player):
             pygame.time.delay(3000)
             pygame.mixer.music.play()
             game = False
-        if self.rect.x > win_width - p_size or self.rect.x < 0:
+        if last_enemy_x > win_width or first_enemy_x < 0:
             for self in enemies:
                 self.rect.y = self.rect.y + 1.5*p_size
                 self.speed = self.speed * -1
@@ -103,21 +107,22 @@ class Enemy(Player):
 def levels():
     global enemies, num_enemies, start, num_level, boss
     if start == True and num_level==1:
-        num_enemies = 5
-        rows = 1
+        num_enemies = 10
+        rows = 2
         x = 10
         y = 100
         for row in range(rows):
             for enemy in range(num_enemies):
                 enemies.append(Enemy("alien.png", x, y, p_size, p_size, 1, 1))
                 x +=1.5*p_size
+            x = 10
             y += 1.5* p_size
         start = False
-        boss = Boss("boss.png", win_width//4, -500, win_width//2, 400, 5, 3)
+        boss = Boss("boss.png", win_width//4, -500, win_width//2, 400, 10, 3)
 
     elif start == True and num_level == 2:
-        num_enemies = 5
-        rows = 2
+        num_enemies = 10
+        rows = 3
         x = 10
         y = 100
         for row in range(rows):
@@ -255,34 +260,42 @@ while menu:
                     game = False
                 if event.type == pygame.KEYDOWN and event.key==pygame.K_ESCAPE:
                     finish = True
-                    title[0].set_text("CONTINUE")
-                    status_menu = True
+                    menu_buttons[1] = Settings("background.png", 0, 0, win_width//10, win_height//10)
+                    menu_buttons[0] = Button("button.png", 30, (255,255,255), win_width//2.6, win_height//1.8, 225, 75)
+                    menu_buttons[0].set_text("CONTINUE")
+                    menu = True
                     game = False
-                    while status_menu:
+                    while menu:
                         for event in pygame.event.get():
                             if event.type == pygame.QUIT:
-                                status_menu = False
+                                menu = False
                             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                                 x,y = event.pos
-                                if title[0].rect.collidepoint(x,y):
-                                    status_menu = False
+                                if menu_buttons[0].rect.collidepoint(x,y):
+                                    menu = False
                                     finish = False
                                     game = True
-                                if title[1].rect.collidepoint(x,y):
-                                    status_menu = False
+                                if menu_buttons[2].rect.collidepoint(x,y):
+                                    menu = False
                                     game = False
                         if game != True:
                             bg.draw()
-                            for b in title:
-                                b.draw(20,20)
+                            title.draw()                         
+                            menu_buttons[0].draw(35,20)
+                            menu_buttons[1].draw()
+                            menu_buttons[2].draw(35,20)
                             pygame.display.flip()
                             FPS.tick(60)
                         else:
-                            status_menu = True
-                            title[0].set_text("PLAY")
+                            menu = True
+                            menu_buttons[0].set_text("PLAY")
                             break
 
             if finish != True:
+                last_enemy_x += lf_speed
+                first_enemy_x += lf_speed
+                if last_enemy_x > win_width or first_enemy_x < 0:
+                    lf_speed *= -1
                 bg.draw()
                 player.draw()
                 player.move()
@@ -299,7 +312,6 @@ while menu:
                     enemy.draw()
 
                 for bullet in bullets:
-                    shootsound.play()
                     bullet.move()
                     bullet.draw()
                     
