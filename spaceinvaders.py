@@ -14,6 +14,7 @@ win_height = 660 #Висота вікна
 p_size = 75 #Розмір прибульців
 enemies = [] #Список прибульців
 bullets = [] #Список куль гравця
+powerups = []
 first_enemy_x = 0 #х координата першого прибульця (надається в levels())
 last_enemy_x = 0 #х координата останнього прибульця (надається в levels())
 enemy_speed = 0 #швидкість прибульця (надається в levels())
@@ -83,6 +84,12 @@ class Player(Settings):     #Клас гравця
             shoot = False
             shootsound.play()
             bullets.append(Bullet("bullet.png", self.rect.centerx-20, self.rect.centery//1.25, 50, 100, 20))
+
+    def powerupshoot(self):
+        global powerup_ready
+        if powerup_ready:
+            powerup_ready = False
+            powerups.append(Powerup("powerup.png", randint(0,win_width), -2*p_size, 2*p_size, 2*p_size, 10))
             
 class Enemy(Player):        #Клас прибульців
     def __init__(self, image, x, y, w, h, s, hp):
@@ -116,7 +123,7 @@ def levels():       #Зміна для рівнів
     if start == True and num_level==1:      #Перший рівень
         enemy_speed = 3
         lf_speed = enemy_speed
-        num_enemies = 5
+        num_enemies = 1
         rows = 1
         last_enemy_x = win_width//2 + num_enemies//2*p_size*1.5
         first_enemy_x = win_width//2 - num_enemies//2*1.5*p_size
@@ -205,8 +212,7 @@ class Bullet(Player):       #Клас куль
             damagesound.play()
             player.hp -= 1
             boss.boss_bullets.remove(self)
-
-        
+      
 class Boss(Player):     #Клас боса
     def __init__(self, image, x, y, w, h, s, hp):
         super().__init__(image, x, y, w, h, s)
@@ -264,6 +270,20 @@ class Boss(Player):     #Клас боса
         elif self.start == False and len(self.boss_bullets)==0:
             self.start = True
 
+class Powerup(Player):
+    def __init__(self, image, x, y, w, h, s):
+        super().__init__(image, x, y, w, h, s)
+
+    def move(self):
+        global powerup_active
+        self.rect.y += self.speed
+        if self.rect.y >= win_height:
+            powerups.remove(self)
+        elif self.rect.colliderect(player.rect):
+            powerups.remove(self)
+            powerup_active = True
+                
+        
         
 player = Player("rocket.png", win_width//2., win_height//1.3, 2*p_size, 2*p_size, 10)   #Гравець
 bg = Settings("background.png", 0, 0, win_width, win_height)        #Фон
@@ -299,8 +319,11 @@ finish = False      #Змінна перевірки кінця гри
 start = True        #Змінна перевірки початку гри
 num_level = 1       #Змінна рівня
 current = time.time()   #Змінна часу для таймера
+current_p = time.time()
 shoot = True        #Змінна перевірки стрільби
 floor = False       #Змінна переходу ворогів вниз
+powerup_active = False
+powerup_ready = False
 
 while menu:
     for event in pygame.event.get():       #Закривання гри на хрестик
@@ -426,11 +449,11 @@ while menu:
                                 FPS.tick(60)
 
             if finish != True:      #Початок гри
-                print(y)
                 bg.draw()
                 player.draw()
                 player.move()
                 player.bulletshoot()
+                player.powerupshoot()
                 
                 levels()
 
@@ -443,7 +466,17 @@ while menu:
                 if time.time()-current>0.5:     #Таймер стрільби
                     current = time.time()
                     shoot = True
-            
+                
+                if time.time()-current_p>3:
+                    powerup_ready = True
+                    current_p = time.time()
+                    
+
+                for powerup in powerups:
+                    powerup.move()
+                    powerup.draw()
+
+
                 for enemy in enemies:   #Вороги
                     enemy.move()
                     enemy.draw()
