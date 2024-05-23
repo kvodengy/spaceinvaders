@@ -68,10 +68,10 @@ class Player(Settings):     #Клас гравця
     def move(self):        #рух
         self.draw_hp()
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT] and self.rect.x>3*p_size:
+        if keys[pygame.K_LEFT] and self.rect.x>0:
             self.rect.x -= self.speed
             self.image = pygame.transform.scale(pygame.image.load("rocketleft.png"), (2*p_size, 2*p_size))
-        elif keys[pygame.K_RIGHT] and self.rect.x<win_width-3*p_size:
+        elif keys[pygame.K_RIGHT] and self.rect.x<win_width-2*p_size:
             self.rect.x += self.speed 
             self.image = pygame.transform.scale(pygame.image.load("rocketright.png"), (2*p_size, 2*p_size))
         else:
@@ -89,7 +89,7 @@ class Player(Settings):     #Клас гравця
         global powerup_ready
         if powerup_ready:
             powerup_ready = False
-            powerups.append(Powerup("powerup.png", randint(0,win_width), -2*p_size, 2*p_size, 2*p_size, 10))
+            powerups.append(Powerup("powerup.png", randint(0,win_width-2*p_size), -2*p_size, 2*p_size, 2*p_size, 5))
             
 class Enemy(Player):        #Клас прибульців
     def __init__(self, image, x, y, w, h, s, hp):
@@ -104,6 +104,8 @@ class Enemy(Player):        #Клас прибульців
         if self.rect.y > win_height-2*p_size and self in enemies:
             damagesound.play()
             enemies.clear()
+            bullets.clear()
+            powerups.clear()
             pygame.mixer.music.stop()
             losesound.play()
             lose.draw()
@@ -123,7 +125,7 @@ def levels():       #Зміна для рівнів
     if start == True and num_level==1:      #Перший рівень
         enemy_speed = 3
         lf_speed = enemy_speed
-        num_enemies = 1
+        num_enemies = 5
         rows = 1
         last_enemy_x = win_width//2 + num_enemies//2*p_size*1.5
         first_enemy_x = win_width//2 - num_enemies//2*1.5*p_size
@@ -136,7 +138,7 @@ def levels():       #Зміна для рівнів
             x = win_width//2 - num_enemies//2*1.5*p_size
             y += 1.5* p_size
         start = False
-        boss = Boss("boss1.png", win_width//4, -500, win_width//2, 400, 3, 5)
+        boss = Boss("boss1.png", win_width//4, -500, win_width//2, 400, 3, 10)
 
     if start == True and num_level == 2:        #Другий рівень
         enemy_speed = 3
@@ -154,7 +156,7 @@ def levels():       #Зміна для рівнів
             x = win_width//2 - num_enemies//2*1.5*p_size
             y += 1.5* p_size
         start = False
-        boss = Boss("boss2.png", win_width//4, -500, win_width//2, 400, 10, 10)
+        boss = Boss("boss2.png", win_width//4, -500, win_width//2, 400, 10, 25)
 
     elif start == True and num_level == 3:      #Третій рівень
         enemy_speed = 3
@@ -172,7 +174,7 @@ def levels():       #Зміна для рівнів
             x = win_width//2 - num_enemies//2*1.5*p_size
             y += 1.5* p_size
         start = False
-        boss = Boss("boss3.png", win_width//4, -500, win_width//2, 400, 10, 15)
+        boss = Boss("boss3.png", win_width//4, -500, win_width//2, 400, 10, 40)
 
 class Bullet(Player):       #Клас куль
     def __init__(self, image, x, y, w, h, s):
@@ -256,7 +258,7 @@ class Boss(Player):     #Клас боса
         if self.start == True and len(self.boss_bullets)==0:
             for i in range(randint(1,1)):
                 x=randint(320, 960)
-                self.boss_bullets.append(Bullet("bullet.png", x, self.rect.y+self.rect.height//2, 20, 40, 10))
+                self.boss_bullets.append(Bullet("bullet.png", x, self.rect.y+self.rect.height//2, 20, 40, 15))
                 self.start = False
         elif self.start == False and len(self.boss_bullets)==0:
             self.start = True
@@ -275,17 +277,19 @@ class Powerup(Player):
         super().__init__(image, x, y, w, h, s)
 
     def move(self):
-        global powerup_active
+        global powerup_active, current_a
         self.rect.y += self.speed
         if self.rect.y >= win_height:
             powerups.remove(self)
         elif self.rect.colliderect(player.rect):
+            powerupsfx.play()
             powerups.remove(self)
             powerup_active = True
+            current_a = time.time()
                 
         
         
-player = Player("rocket.png", win_width//2., win_height//1.3, 2*p_size, 2*p_size, 10)   #Гравець
+player = Player("rocket.png", win_width//2., win_height//1.3, 2*p_size, 2*p_size, 15)   #Гравець
 bg = Settings("background.png", 0, 0, win_width, win_height)        #Фон
 title = Settings("title.png", win_width//9, win_height//15, win_width//1.5, win_height//2.5)        #Назва гри
 win = Settings("win.jpg",-50,0,win_width+50,win_height)     #Екран перемоги
@@ -293,8 +297,9 @@ lose = Settings("lose.jpg",0,0,win_width, win_height)       #екран прог
 
 winsound = pygame.mixer.Sound("win.mp3")
 shootsound = pygame.mixer.Sound("shootsfx.mp3")
-losesound = pygame.mixer.Sound("gameover.wav")
+losesound = pygame.mixer.Sound("gameover.mp3")
 damagesound = pygame.mixer.Sound("explosion.mp3")
+powerupsfx = pygame.mixer.Sound("powerupsfx.mp3")
 pygame.mixer.music.load("bgmusic.mp3")
 pygame.mixer.music.play()
 
@@ -319,11 +324,12 @@ finish = False      #Змінна перевірки кінця гри
 start = True        #Змінна перевірки початку гри
 num_level = 1       #Змінна рівня
 current = time.time()   #Змінна часу для таймера
-current_p = time.time()
+
 shoot = True        #Змінна перевірки стрільби
 floor = False       #Змінна переходу ворогів вниз
 powerup_active = False
 powerup_ready = False
+
 
 while menu:
     for event in pygame.event.get():       #Закривання гри на хрестик
@@ -343,6 +349,7 @@ while menu:
                 num_level = 1
                 start = True
                 player.hp = 3
+                current_p = time.time()
             if menu_buttons[1].rect.collidepoint(x,y):      #Кнопка налаштувань
                 settings = True      
             if menu_buttons[2].rect.collidepoint(x,y):       #Кнопка EXIT
@@ -463,19 +470,28 @@ while menu:
                     floor = True
                     lf_speed *= -1
 
-                if time.time()-current>0.5:     #Таймер стрільби
-                    current = time.time()
-                    shoot = True
                 
-                if time.time()-current_p>3:
+                
+                if time.time()-current_p > randint(7,15):
                     powerup_ready = True
                     current_p = time.time()
-                    
 
+                if powerup_active:
+                    player.speed = 25
+                    if time.time()-current > 0.25:     #Таймер стрільби
+                        current = time.time()
+                        shoot = True
+                    if powerup_active and time.time() - current_a > 3:
+                        powerup_active = False
+                        player.speed = 15
+                else:
+                    if time.time()-current>0.5:     #Таймер стрільби
+                        current = time.time()
+                        shoot = True
+                    
                 for powerup in powerups:
                     powerup.move()
                     powerup.draw()
-
 
                 for enemy in enemies:   #Вороги
                     enemy.move()
@@ -510,6 +526,9 @@ while menu:
                         num_level += 1
 
                 if player.hp <= 0:  #Програш
+                    enemies.clear()
+                    bullets.clear()
+                    powerups.clear()
                     pygame.mixer.music.stop()
                     losesound.play()
                     lose.draw()
